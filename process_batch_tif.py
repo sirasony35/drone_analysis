@@ -20,19 +20,20 @@ CLASSIFICATION_MAP = {
         (0.70, '#a1d193', '0.56 - 0.70'),
         ('max', '#447cb9', '> 0.70')
     ],
-    'NDVI': [
-        (0.25, '#c51f1e', '<= 0.25'),
-        (0.45, '#f5a361', '0.26 - 0.45'),
-        (0.60, '#faf7be', '0.46 - 0.60'),
-        (0.75, '#a1d193', '0.61 - 0.75'),
-        ('max', '#447cb9', '> 0.75')
-    ],
+    # ★★★ GNDVI를 NDVI보다 위로 이동 ★★★
     'GNDVI': [
         (0.30, '#c51f1e', '<= 0.30'),
         (0.50, '#f5a361', '0.31 - 0.50'),
         (0.65, '#faf7be', '0.51 - 0.65'),
         (0.80, '#a1d193', '0.66 - 0.80'),
         ('max', '#447cb9', '> 0.80')
+    ],
+    'NDVI': [
+        (0.25, '#c51f1e', '<= 0.25'),
+        (0.45, '#f5a361', '0.26 - 0.45'),
+        (0.60, '#faf7be', '0.46 - 0.60'),
+        (0.75, '#a1d193', '0.61 - 0.75'),
+        ('max', '#447cb9', '> 0.75')
     ],
     'LCI': [
         (0.20, '#c51f1e', '<= 0.20'),
@@ -54,16 +55,8 @@ CLASSIFICATION_MAP = {
         (0.45, '#faf7be', '0.31 - 0.45'),
         (0.60, '#a1d193', '0.46 - 0.60'),
         ('max', '#447cb9', '> 0.60')
-    ],
-    'UNKNOWN': [  # 이름이 없던 규칙
-        (0.20, '#c51f1e', '<= 0.20'),
-        (0.40, '#f5a361', '0.21 - 0.40'),
-        (0.60, '#faf7be', '0.41 - 0.60'),
-        (0.85, '#a1d193', '0.61 - 0.85'),
-        ('max', '#447cb9', '> 0.85')
     ]
 }
-
 
 # ------------------------- (여기부터는 수정할 필요 없습니다) -------------------------
 
@@ -78,6 +71,51 @@ def setup_qgis_environment():
     os.environ['QT_PLUGIN_PATH'] = os.path.join(QGIS_INSTALL_PATH, 'apps/qgis-ltr/qtplugins')
     print("QGIS 환경 설정 완료.")
 
+
+def print_class_statistics(provider, rules):
+    """래스터 데이터의 각 등급별 최소/최대/픽셀 수를 계산하고 출력하는 함수"""
+    print("   [분석] 각 등급별 통계 계산 시작...")
+
+    extent = provider.extent()
+    width = provider.xSize()
+    height = provider.ySize()
+
+    class_pixels = {rule[2]: [] for rule in rules}
+    block = provider.block(1, extent, width, height)
+
+    # --- ★★★ 로직이 수정된 부분 ★★★ ---
+    # 5개의 등급 구간 경계값을 미리 변수로 지정합니다.
+    breaks = [r[0] for r in rules if isinstance(r[0], (int, float))]
+
+    # 모든 픽셀을 하나씩 확인하며 if/elif/else로 명확하게 분류
+    for i in range(width * height):
+        value = block.value(i)
+
+        if value <= breaks[0]:
+            class_pixels[rules[0][2]].append(value)
+        elif value <= breaks[1]:
+            class_pixels[rules[1][2]].append(value)
+        elif value <= breaks[2]:
+            class_pixels[rules[2][2]].append(value)
+        elif value <= breaks[3]:
+            class_pixels[rules[3][2]].append(value)
+        else:  # 나머지 모든 값 (마지막 등급)
+            class_pixels[rules[4][2]].append(value)
+
+    # 분류된 픽셀들의 통계 출력
+    print("   -------------------------------------------------")
+    print("   | 범례 라벨         |  픽셀 수 |   최소값   |   최대값   |")
+    print("   -------------------------------------------------")
+    for label, pixels in class_pixels.items():
+        count = len(pixels)
+        if count > 0:
+            min_val = min(pixels)
+            max_val = max(pixels)
+            print(f"   | {label:<18}| {count:>8} | {min_val:>10.4f} | {max_val:>10.4f} |")
+        else:
+            # nan 대신 '-'를 출력하여 더 깔끔하게 보여줍니다.
+            print(f"   | {label:<18}| {count:>8} |      -     |      -     |")
+    print("   -------------------------------------------------")
 
 def process_raster(input_path, output_path, rules):
     """단일 GeoTIFF 파일을 처리하여 PNG로 저장하는 함수"""
@@ -99,6 +137,7 @@ def process_raster(input_path, output_path, rules):
     project.addMapLayer(raster_layer)
 
     provider = raster_layer.dataProvider()
+    # print_class_statistics(provider, rules)
     stats = provider.bandStatistics(1)
     max_value = stats.maximumValue
 
