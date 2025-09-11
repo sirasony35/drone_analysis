@@ -54,13 +54,13 @@ def main():
     except:
         print("[경고] 'Malgun Gothic' 폰트를 찾을 수 없습니다. 히트맵의 한글이 깨질 수 있습니다.")
 
-    heatmap_data = corr_matrix.loc[TARGET_VARIABLES, predictor_variables]
-    plt.figure(figsize=(14, 10))
+    heatmap_data = corr_matrix.loc[predictor_variables,TARGET_VARIABLES]
+    plt.figure(figsize=(10, 14))
     sns.heatmap(heatmap_data, annot=True, cmap='coolwarm', fmt='.2f', linewidths=.5)
     plt.title('수확량/단백질과 식생 지수의 상관관계', fontsize=16)
     plt.tight_layout()
 
-    output_image_path = 'correlation_heatmap_2.png'
+    output_image_path = 'correlation_heatmap.png'
     plt.savefig(output_image_path, dpi=200)
     print(f"[성공] 히트맵이 '{output_image_path}' 파일로 저장되었습니다.")
 

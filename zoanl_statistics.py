@@ -7,7 +7,7 @@ from rasterstats import zonal_stats
 
 # --- 1. 사용자 설정 부분 ---
 GEOJSON_FOLDER = 'geo_json_data'
-RASTER_FOLDER = 'drone_data'
+RASTER_FOLDER = 'drone_data_reprojected_5179'
 
 # 최종 결과 GeoJSON 파일이 저장될 폴더 경로
 OUTPUT_FOLDER = 'result_geojson'
