@@ -71,9 +71,11 @@ def main():
 
                 # 핵심 기능: zonal_stats로 구역별 평균 통계 계산
                 stats = zonal_stats(gdf, raster_path, stats="mean")
+                print(f"{column_name}의 구역통계 {stats}")
 
                 # 결과에서 평균값만 추출하여 리스트로 만듦
                 mean_values = [s['mean'] for s in stats]
+                print(f"{column_name}의 구역통계 {mean_values}")
 
                 # GeoDataFrame에 새로운 컬럼으로 추가
                 gdf[column_name] = mean_values
