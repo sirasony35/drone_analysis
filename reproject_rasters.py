@@ -7,10 +7,10 @@ from rasterio.crs import CRS
 import shutil
 
 # --- 1. 사용자 설정 부분 ---
-INPUT_RASTER_FOLDER = 'drone_data'
-OUTPUT_RASTER_FOLDER = 'drone_data_reprojected_5179'
+INPUT_RASTER_FOLDER = 'drone_data'  ## 원본 데이터 저장 폴더
+OUTPUT_RASTER_FOLDER = 'drone_data_reprojected_5179'  ## 변환된 데이터 저장 폴더
 
-TARGET_CRS_STRING = 'EPSG:5179'
+TARGET_CRS_STRING = 'EPSG:5179'  ## 변환원하는 자표계
 
 
 # -------------------------
@@ -31,12 +31,8 @@ def main():
 
     print(f"\n총 {len(raster_files)}개의 파일을 확인합니다.")
 
-    # 목표 CRS의 EPSG 코드(숫자)를 미리 추출
-    try:
-        target_epsg_code = CRS.from_string(TARGET_CRS_STRING).to_epsg()
-    except Exception as e:
-        print(f"[오류] 목표 CRS '{TARGET_CRS_STRING}'를 해석할 수 없습니다: {e}")
-        return
+    # 목표 CRS의 코드(숫자) 부분만 문자열로 추출
+    target_epsg_code_str = TARGET_CRS_STRING.split(':')[-1]
 
     for raster_path in raster_files:
         filename = os.path.basename(raster_path)
@@ -44,20 +40,18 @@ def main():
 
         with rasterio.open(raster_path) as src:
             source_crs = src.crs
+            is_target_crs = False
 
-            # === ★★★ 수정된 부분: EPSG 코드(숫자)로 직접 비교 ★★★ ===
-            source_epsg_code = None
+            # === ★★★ 최종 수정된 부분: 단순하고 강력한 문자열 검색 ★★★ ===
             if source_crs:
-                try:
-                    source_epsg_code = source_crs.to_epsg()
-                except:
-                    # EPSG 코드를 추출할 수 없는 경우, 다르다고 간주
-                    pass
+                source_wkt = source_crs.to_wkt()
+                # WKT 문자열 안에 'EPSG'와 목표 코드('5179')가 모두 있는지 확인
+                if 'EPSG' in source_wkt and target_epsg_code_str in source_wkt:
+                    is_target_crs = True
 
-            print(f"-> 확인 중: {filename} (감지된 EPSG 코드: {source_epsg_code})")
+            print(f"-> 확인 중: {filename} (목표 CRS와 동일한가? {is_target_crs})")
 
-            # EPSG 코드가 다르거나, 소스 코드 인식이 불가능한 경우에만 변환 수행
-            if source_epsg_code != target_epsg_code:
+            if not is_target_crs:
                 print(f"   [변환 필요] 좌표계를 {TARGET_CRS_STRING}로 재투영합니다...")
 
                 target_crs_object = CRS.from_string(TARGET_CRS_STRING)
@@ -84,8 +78,8 @@ def main():
                             resampling=Resampling.nearest)
                 print(f"   [성공] 변환된 파일 저장 완료: {filename}")
             else:
-                print("   [통과] EPSG 코드가 이미 올바릅니다. 파일을 복사합니다.")
-                shutil.copy(raster_path, output_path)
+                print("   [통과] 좌표계가 이미 올바릅니다. 파일을 건너뜁니다.")
+                # shutil.copy(raster_path, output_path)
 
     print("\n--- 모든 래스터 파일 처리가 완료되었습니다. ---")
 
